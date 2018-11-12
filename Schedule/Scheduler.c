@@ -11,7 +11,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <pthread.h>
-#include "DataSturcture/list.c"
+
+#include "./../DataStructure/list.c"
 
 typedef struct scheduler_info {
     int core;
@@ -32,58 +33,57 @@ schedulerInfo *newScheduler(int core, char schedulerType, task *taskList, FILE *
 }
 
 void updateSchedulerStatus(FILE *fileName, task *task, int core, int clock) {
-    task *status = (*task).processState;
     
-    switch(status) {
+    switch((*task).processState) {
         case 0:
-            fprintf(fileName, "core%d,%d,%d,%s\n", core, clock, task->data.t.id, "new");
+            fprintf(fileName, "core%d,%d,%d,%s\n", core, clock, (*task).id, "new");
             break;
         case 1:
-            fprintf(fileName, "core%d,%d,%d,%s\n", core, clock, task->data.t.id, "ready");
+            fprintf(fileName, "core%d,%d,%d,%s\n", core, clock, (*task).id, "ready");
             break;
         case 2:
-            fprintf(fileName, "core%d,%d,%d,%s\n", core, clock, task->data.t.id, "running");
+            fprintf(fileName, "core%d,%d,%d,%s\n", core, clock, (*task).id, "running");
             break;
         case 3:
-            fprintf(fileName, "core%d,%d,%d,%s\n", core, clock, task->data.t.id, "blocked");
+            fprintf(fileName, "core%d,%d,%d,%s\n", core, clock, (*task).id, "blocked");
             break;
         case 4:
-            fprintf(fileName, "core%d,%d,%d,%s\n", core, clock, task->data.t.id, "exit");
+            fprintf(fileName, "core%d,%d,%d,%s\n", core, clock, (*task).id, "exit");
             break;
     }
+}
 
-    /*Aggiunta di un task alla coda dei task bloccati*/
-    void addTaskToBlockedTaskQueue(task *taskToInsert, queueTask *queue) {
-        insertTaskInQueue(taskToInsert, queue)    
-    }
+/*Aggiunta di un task alla coda dei task bloccati*/
+void addTaskToBlockedTaskQueue(task *taskToInsert, queueTask *queue) {
+    insertTaskInQueue(taskToInsert, queue)    
+}
 
-    /*Aggiunta di un task alla coda dei task ready*/
-    void addTaskToReadyTaskQueue(task *taskToInsert, queueTask *queue) {
-        insertTaskInQueue(taskToInsert, queue);
-    }
+/*Aggiunta di un task alla coda dei task ready*/
+void addTaskToReadyTaskQueue(task *taskToInsert, queueTask *queue) {
+    insertTaskInQueue(taskToInsert, queue);
+}
 
-    /*Calcolo del quanto di tempo in modo che sia minore dell' 80% del tempo in cui 
-    la cpu viene impiegata senza istruzioni di I/O */
-    int calculateTimeQuantum(queueTask *queue) {
-        int numberOfInstruction = 0;
-        int durationTimeSum = 0;
-        int timeQuantum = 0;
-        /*devo scorrere tutte le istruzioni all' interno di ogni task nella coda:
-        controllo l'istruzione è bloccante non la considero nella somma*/
-        for (currentTask = (*queue).firstTask; currentTask != NULL; currentTask = (*currentTask).next) {
-            for (currentInstruction = (*instruction).headInstruction; currentInstruction != NULL; currentInstruction = (*currentInstruction).next) {
-                /*Se l'istruzione è bloccante allora non la considero*/
-                if ((*currentInstruction).typeFlag == true) {
-                    continue;
-                }
-                /*Se l' istruzione non è bloccante*/
-                else {
-                    numberOfInstruction ++;
-                    durationTimeSum += (*currentInstruction).length;
-                }
+/*Calcolo del quanto di tempo in modo che sia minore dell' 80% del tempo in cui 
+la cpu viene impiegata senza istruzioni di I/O */
+int calculateTimeQuantum(queueTask *queue) {
+    int numberOfInstruction = 0;
+    int durationTimeSum = 0;
+    int timeQuantum = 0;
+    /*devo scorrere tutte le istruzioni all' interno di ogni task nella coda:
+    controllo l'istruzione è bloccante non la considero nella somma*/
+    for (currentTask = (*queue).firstTask; currentTask != NULL; currentTask = (*currentTask).next) {
+        for (currentInstruction = (*instruction).headInstruction; currentInstruction != NULL; currentInstruction = (*currentInstruction).next) {
+            /*Se l'istruzione è bloccante allora non la considero*/
+            if ((*currentInstruction).typeFlag == true) {
+                continue;
+            }
+            /*Se l' istruzione non è bloccante*/
+            else {
+                numberOfInstruction ++;
+                durationTimeSum += (*currentInstruction).length;
             }
         }
-        timeQuantum = abs((durationTimeSum / numberOfInstruction) * (80 / 100)); /*metto abs per sicurezza*/
-        return timeQuantum;
     }
+    timeQuantum = abs((durationTimeSum / numberOfInstruction) * (80 / 100)); /*metto abs per sicurezza*/
+    return timeQuantum;
 }
