@@ -1,14 +1,11 @@
 //
-//  main.c
-//  ProvaListFileScheduler
 //
 //  Created by Alessandro Maggi on 30/10/2018.
 //  Copyright © 2018 Alessandro Maggi. All rights reserved.
 //
 
-/*
- file contenente tutte le strutture dati necessare alla gesitone dei task e delle istruzioni
- */
+
+/*file contenente tutte le strutture dati necessare alla gesitone dei task e delle istruzioni */
 
 
 #include <stdio.h>
@@ -30,13 +27,13 @@ struct Task {
     instruction *programCounter;
     int arrival_time;
     listInstruction *instr_list; //lista delle istruzioni da eseguire instr_list
-    int processState; /*usiamo un numero per rappresentare i 5 stati*/
+    int processState; /*usiamo un numero per rappresentare i 5 stati 0:new, 1:ready, 2: running, 3:blocked, 4:exit*/
     task *next;
 };
 
 /*Struttura per rappresentare una istruzione*/
 struct Instruction {
-    bool typeFlag;
+    bool typeFlag; //1: bloccante, 0:nonBloccante
     int length;
     instruction *next;
 };
@@ -49,12 +46,13 @@ struct List_for_instruction {
 /*Struttura per rappresentare la lista di istruzioni che contiene solo un puntatore all' istruzione successiva*/
 struct Queue_for_task {
     task *firstTask;
+    int size; //mi serve poi per potrene controllare la presenza di elementi /*IN CASO DI ERRORE é QUI*/
 };
 
 /*nuova lista di istruzioni*/
 listInstruction *newListInstructionNode() {
     listInstruction *newListNode = NULL;
-    newListNode = (listInstruction*)malloc(sizeof(listInstruction)); //metto il (listInstruction*) davanti se no il compilatore fa casino
+    newListNode = (listInstruction*)malloc(sizeof(listInstruction)); 
     if (newListNode == NULL) {
         printf("Errore"); /*Trovare errore piu descrittivo*/
     }
@@ -73,11 +71,11 @@ instruction *newInstruction(bool typeFlag, int length) {
     (*newInstruction).typeFlag = typeFlag; /*Assegniamo all' attributo typeFlag della struct il valore passato alla funzione*/
     
     /*Se l' istruzione è bloccante*/
-    if (typeFlag) {
+    if (typeFlag == true) {
         (*newInstruction).length = rand() % length + 1;
     }
     /*Se l' istruzione non è bloccante*/
-    if (!typeFlag) {
+    if (typeFlag == false) {
         (*newInstruction).length = length;
     }
     
@@ -97,19 +95,21 @@ task *newTask(int id, int arrival_time) {
     
     (*newTaskNode).id = id;
     (*newTaskNode).arrival_time = arrival_time;
-    (*newTaskNode).processState = 1;
+    (*newTaskNode).processState = 0;
     (*newTaskNode).programCounter = NULL;
     (*newTaskNode).next = NULL;
     
+    /*IN CASO FACCIA CASINO SCOMMENTARE LA ROBA SOTTO*/
     /*dato che instr_list è la lista delle istruzini da eseguire
-     devo creare un nuovo nodo alla lista delle istruzioni*/
+    devo creare un nuovo nodo alla lista delle istruzioni
     listInstruction *newListNode = newListInstructionNode();
-    (*newTaskNode).instr_list = newListNode;
+    (*newTaskNode).instr_list = newListNode;*/
     
-    /*Tentativo diverso dalla roba sopra commentata
-     (*newTaskNode).instr_list = newListInstructionNode();
-     (*newTaskNode).instr_list -> headInstruction = NULL;
-     */
+    /*E COMMENTARE QUESTA*/
+    /*Tentativo diverso dalla roba sopra commentata*/
+    (*newTaskNode).instr_list = newListInstructionNode();
+    /*(*newTaskNode).instr_list -> headInstruction = NULL;*/
+     
     return newTaskNode;
 }
 
@@ -123,7 +123,8 @@ queueTask *newQueueForTask() {
     }
     
     (*newTaskQueue).firstTask = NULL;
-    
+    (*newTaskQueue).size = 0; /*IN CASO DI ERRORE QUI*/
+
     return newTaskQueue;
 }
 
@@ -137,7 +138,7 @@ void insertInstructionInTask(instruction *instructionToInsert, task *taskToInser
     instruction *instructionTmp = (instruction*)malloc(sizeof(instruction));
     (*instructionTmp).typeFlag = (*instructionToInsert).typeFlag;
     (*instructionTmp).length = (*instructionToInsert).length;
-    instructionTmp -> next = NULL;
+    (*instructionTmp).next = NULL;
     
     /*se la lista di istruzioni è vuota*/
     if (taskToInsertIn -> instr_list -> headInstruction == NULL) {
@@ -158,7 +159,6 @@ void insertInstructionInTask(instruction *instructionToInsert, task *taskToInser
 
 /*rimovo l'istruzione in testa alla lista dei task*/
 void removeInstructionFromTask(task *taskToRemoveFrom) {
-    /*instruction *instructionTmp = (*taskToRemoveFrom).instr_list -> headInstruction;*/
     
     /*se la lista è gia vuota non devo rimuovere niente*/
     /*Esiste un caso in cui questo avviene ?????*/
@@ -196,8 +196,9 @@ void insertTaskInQueue(task *taskToInsert, queueTask *queueToInsertIn) {
         while ((*current).next != NULL) {
             current = (*current).next;
         }
-        (*current).next = taskTmp;
+        (*current).next = taskTmp; /*Forse in tutti questi la temporanea poi andrebbe cancellata...*/
     }
+    (*queueToInsertIn).size++;
 }
 
 /*Rimozione di un task dalla coda dei task*/
@@ -210,6 +211,19 @@ void removeTaskFromQueue(queueTask *queueToRemoveFrom) {
     task *taskTmp = (*queueToRemoveFrom).firstTask;
     (*queueToRemoveFrom).firstTask = (*queueToRemoveFrom).firstTask -> next;
     free(taskTmp);
+    (*queueToRemoveFrom).size--;
+}
+
+/*Funzione per controllare se una coda è vuota*/
+int isEmpty(queueTask* Queue) {
+    if (Queue == NULL) {
+        return 0;
+    }
+    if (Queue->size == 0) {
+        return 1;
+    } else {
+        return 0;
+    }
 }
 
 
