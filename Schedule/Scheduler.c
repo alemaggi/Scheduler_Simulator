@@ -176,10 +176,15 @@ void *changeProcessState(void *schedInfo) {
                     (*readyTaskQueue).firstTask -> processState = 2;
                     updateSchedulerStatus(outputFile, (*readyTaskQueue).firstTask, core, clock);
 
-                    int instructionStart = (*readyTaskQueue).firstTask -> instr_list -> headInstruction -> length + clock;
-
+                    int instructionEnd = (*readyTaskQueue).firstTask -> instr_list -> headInstruction -> length + clock;
+                    
                     /*Se la length dell' istruzione è minore del quanto*/
                     if ((*readyTaskQueue).firstTask -> instr_list -> headInstruction -> length <= timeQuantum) {
+
+                        while (clock != instructionEnd) {
+                        clock++;
+                        }
+                        
                         //tolgo l'istruzione dal task
                         removeInstructionFromTask((*readyTaskQueue).firstTask);
                         //se l'istruzione fosse stata l' ultima del task mando il task in exit
@@ -187,13 +192,18 @@ void *changeProcessState(void *schedInfo) {
                             (*readyTaskQueue).firstTask -> processState = 2;
                             updateSchedulerStatus(outputFile, (*readyTaskQueue).firstTask, core, clock);
                             //rimuovo il task dalla coda
-                            removeTaskFromQueue(readyTaskQueue);
+                            removeTaskFromQueue(readyTaskQueue);                            
                         }
                     }
                     /*Se la length dell' istruzione è maggiore del quanto*/
                     if ((*readyTaskQueue).firstTask -> instr_list -> headInstruction -> length > timeQuantum) {
+                        
                         //aggiorno la lunghezza dell'istruzione
                         (*readyTaskQueue).firstTask -> instr_list -> headInstruction -> length -= timeQuantum;
+
+                        while (clock != clock + timeQuantum) {
+                        clock++;
+                        }
                         //mando il task in fondo alla coda ready
                         insertTaskInQueue(readyTaskQueue -> firstTask, readyTaskQueue);
                         removeTaskFromQueue(readyTaskQueue);
