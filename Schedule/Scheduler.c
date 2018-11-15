@@ -91,8 +91,8 @@ int calculateTimeQuantum(queueTask *queue) {
 }
 
 /*Mutex*/
+/*Andrebbe usata ogni volta che scrivi o leggi su una coda*/
 pthread_mutex_t mutexOne = PTHREAD_MUTEX_INITIALIZER;
-
 
 /*Funzione di scheduling*/
 void *changeProcessState(void *schedInfo) {
@@ -128,18 +128,27 @@ void *changeProcessState(void *schedInfo) {
         /*devo metterci finche ho task da eseguire direi*/
         while (work == false) {
         
+            pthread_mutex_lock(&mutexOne);
             if (!isEmpty(taskList)) {
                 //se i task sono a new(0) li metti in ready
                 if ((*taskList).firstTask -> processState == 0) {
+
+                    //stampo che i task sono a new (Deve succedere solo una volta)
+                    updateSchedulerStatus(outputFile, (*taskList).firstTask, core, clock);
+
                     //inserisco i task nella coda ready
                     insertTaskInQueue((*taskList).firstTask, readyTaskQueue);
                     //cambio il process state a READY(1)
                     (*readyTaskQueue).firstTask -> processState = 1;
                     //stampo il cambiamento di stato
                     updateSchedulerStatus(outputFile, (*readyTaskQueue).firstTask, core, clock);
+                    //dovrei anche fare una pop da taskList ??? --> se la risposta è NO cancellare sotto
+                    removeTaskFromQueue(taskList);
                 }
             }
+            pthread_mutex_unlock(&mutexOne);
 
+            pthread_mutex_lock(&mutexOne);
             /*Se la coda dei bloccati non è vuota*/
             if (!isEmpty(blockedTaskQueue)) {
                 /*Se c'è un task che posso sbloccare*/
@@ -156,7 +165,9 @@ void *changeProcessState(void *schedInfo) {
                     updateSchedulerStatus(outputFile, (*blockedTaskQueue).firstTask, core, clock);
                 }
             }
+            pthread_mutex_unlock(&mutexOne);
 
+            pthread_mutex_lock(&mutexOne);
             /*Se la coda dei ready non è vuota allora*/
             if (!isEmpty(readyTaskQueue)) {
                 /*Se l'istruzione non è bloccante*/
@@ -167,10 +178,6 @@ void *changeProcessState(void *schedInfo) {
 
                     int instructionStart = (*readyTaskQueue).firstTask -> instr_list -> headInstruction -> length + clock;
 
-                    /*questa cosa la fa franceschetti ma io non la avrei messa. Non so se sia essenziale*/
-                    while (clock != instructionStart) {
-                        clock++;
-                    }
                     /*Se la length dell' istruzione è minore del quanto*/
                     if ((*readyTaskQueue).firstTask -> instr_list -> headInstruction -> length <= timeQuantum) {
                         //tolgo l'istruzione dal task
@@ -207,13 +214,62 @@ void *changeProcessState(void *schedInfo) {
                     removeTaskFromQueue(readyTaskQueue);
                 }
             }
+            pthread_mutex_unlock(&mutexOne);
 
             //aggiorno il clock
             clock++;
 
+            pthread_mutex_lock(&mutexOne);
             //se tutte le code sono vuote cambio work e non rientro nel ciclo
             if (isEmpty(taskList) && isEmpty(blockedTaskQueue) && isEmpty(readyTaskQueue)) {
                 work = true;
+            }
+            pthread_mutex_unlock(&mutexOne);
+        }
+    }
+
+    //caso FCFS
+    /*I task vengono gestiti tramite coda FIFO*/
+    if (schedulerType == 'n') {
+        //inizializzo la coda dei bloccati
+        queueTask *blockedTaskQueue = newQueueForTask();
+        //inizializzo la coda dei ready
+        queueTask *readyTaskQueue = newQueueForTask();
+
+        //variabile booleana per farmi restare dentro al ciclo finche tutte le code non sono vuote
+        bool work = false;
+
+        while (work == false) {
+
+            //Se devo stampare anche quando metto i task a new lo devo fare qui
+            
+            pthread_mutex_lock(&mutexOne);
+            if (!isEmpty(taskList)) {
+                //se i task sono a new(0) li metti in ready
+                if ((*taskList).firstTask -> processState == 0) {
+                    //inserisco i task nella coda ready
+                    insertTaskInQueue((*taskList).firstTask, readyTaskQueue);
+                    //cambio il process state a READY(1)
+                    (*readyTaskQueue).firstTask -> processState = 1;
+                    //stampo il cambiamento di stato
+                    updateSchedulerStatus(outputFile, (*readyTaskQueue).firstTask, core, clock);
+                    //dovrei anche fare una pop da taskList ???
+                }
+            }
+
+            //se la coda dei ready non è vuota
+            if (!isEmpty(readyTaskQueue)) {
+                //se l' istruzione non è bloccante
+                if ((*readyTaskQueue).firstTask -> instr_list -> headInstruction -> typeFlag == 0) {
+                    //cambio lo stato a running
+                    (*readyTaskQueue).firstTask -> processState = 2;
+                    //faccio aumentare il clock della durata dell' istruzione
+                    int endTime = clock + (*readyTaskQueue).firstTask -> instr_list -> headInstruction -> length;
+                    while (clock <= endTime) {
+                        clock++;
+                    }
+                    
+                }   
             }
         }
     }   
