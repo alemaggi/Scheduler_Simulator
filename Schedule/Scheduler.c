@@ -245,13 +245,11 @@ void *changeProcessState(void *schedInfo) {
         queueTask *blockedTaskQueue = newQueueForTask();
         //inizializzo la coda dei ready
         queueTask *readyTaskQueue = newQueueForTask();
-
+        
         //variabile booleana per farmi restare dentro al ciclo finche tutte le code non sono vuote
         bool work = false;
-
+        
         while (work == false) {
-
-            //Se devo stampare anche quando metto i task a new lo devo fare qui
             
             pthread_mutex_lock(&mutexOne);
             if (!isEmpty(taskList)) {
@@ -263,10 +261,25 @@ void *changeProcessState(void *schedInfo) {
                     (*readyTaskQueue).firstTask -> processState = 1;
                     //stampo il cambiamento di stato
                     updateSchedulerStatus(outputFile, (*readyTaskQueue).firstTask, core, clock);
-                    //dovrei anche fare una pop da taskList ???
+                    removeTaskFromQueue(taskList);
                 }
             }
-
+            
+            /*Se la coda dei bloccati non è vuota*/
+            /*Se c'è un task che posso sbloccare*/
+            if (((blockedTaskQueue -> firstTask -> instr_list -> headInstruction -> length) + //non sono sicuro sia giusto
+                 (blockedTaskQueue -> firstTask -> arrival_time)) >= clock) {
+                
+                //cambio il suo process state a READEY(1)
+                (*blockedTaskQueue).firstTask -> processState = 1;
+                //lo metto nella coda ready
+                insertTaskInQueue((*blockedTaskQueue).firstTask, readyTaskQueue);
+                //lo rimuovo dalla coda dei bloccati
+                removeTaskFromQueue(blockedTaskQueue);
+                //stampo il cambiamento di stato
+                updateSchedulerStatus(outputFile, (*blockedTaskQueue).firstTask, core, clock);
+            }
+            
             //se la coda dei ready non è vuota
             if (!isEmpty(readyTaskQueue)) {
                 //se l' istruzione non è bloccante
@@ -278,9 +291,24 @@ void *changeProcessState(void *schedInfo) {
                     while (clock <= endTime) {
                         clock++;
                     }
-                    
-                }   
+                    //se l' istruzione era l'ultima del task lo mando in exit
+                    if ((*readyTaskQueue).firstTask -> next == NULL) {
+                        (*readyTaskQueue).firstTask -> processState = 4;
+                        updateSchedulerStatus(outputFile, (*readyTaskQueue).firstTask, core, clock);
+                        removeTaskFromQueue(readyTaskQueue);
+                    }
+                }
+                //se l'istruzione è bloccante
+                if ((*taskList).firstTask -> instr_list -> headInstruction -> typeFlag == 1) {
+                    //cambio lo stato a blocked e metto il task nei blocked
+                    (*taskList).firstTask -> processState = 3;
+                    insertTaskInQueue((*taskList).firstTask, blockedTaskQueue);
+                    //rimuovo il task dai ready
+                    removeTaskFromQueue(readyTaskQueue);
+                    //loggo il cambiamento
+                    updateSchedulerStatus(outputFile, (*taskList).firstTask, core, clock);
+                }
             }
         }
-    }   
+    }
 }
