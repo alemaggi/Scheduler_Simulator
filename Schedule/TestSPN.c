@@ -55,21 +55,42 @@ void printSchedulerStatus(char *fileName, task *task, int core, int clock){
     fclose(outputFile);
 }
 
-//Sorting per le istruzioni in SPN <-- DA CONTROLLARE !!!!!!!!!!!!!!!
-void sortingAlg(queueTask *queue){
-    //task
-    for (task *currentTask = (*queue).firstTask; currentTask != NULL; currentTask = (*currentTask).next) {
-        //istruzioni
-        for (instruction *currentInstruction = (*currentTask).instr_list -> headInstruction ; currentInstruction != NULL; currentInstruction = (*currentInstruction).next) {
-            instruction* pos = currentInstruction;
-            for (instruction *nextInstruction = (*currentTask).instr_list -> headInstruction -> next ; nextInstruction != NULL; nextInstruction = (*nextInstruction).next) {
-                if (nextInstruction->length < pos -> length) {
-                    pos = nextInstruction;
+//Sorting per le istruzioni in SPN 
+/* ---------------------------------- */
+
+void swap(instruction* a, instruction* b){
+    int temp = a -> length; //forse è sbagliato perchè ho paura che mi faccia perdere il type flag Nel senso che una bloccante si trova la lunghezza di una bloccante
+    /*potrei rimediare mettendo qualcosa del genere
+    bool typeFlagTMP = a->typeFlag
+    ...
+    */
+    a->length = b->length;
+    b->length = temp;
+}
+
+void bubbleSort(queueTask* queue){
+    for (task* currentTask = queue->firstTask; currentTask != NULL; currentTask = currentTask->next){
+        int swapped, i;
+        instruction* ptr1;
+        instruction* lptr = NULL;
+
+        do{
+            swapped = 0;
+            ptr1 = currentTask->instr_list->headInstruction;
+
+            while (ptr1->next != NULL){
+                if (ptr1->length > ptr1->next->length){
+                    swap(ptr1, ptr1->next);
+                    swapped = 1;
                 }
+                ptr1 = ptr1->next;
             }
+            lptr = ptr1;
         }
+        while (swapped);
     }
 }
+/* ---------------------------------- */
 
 void* schedule(void* schedInfo){
 
