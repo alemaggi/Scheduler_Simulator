@@ -22,7 +22,7 @@ void parseInput(queueTask *Queue, char *inputFile) {
         printf("Errore"); //fare qualcosa piu utile di stampare errore
     }
 
-    while (fscanf(inputFile, "%c, %i, %i", &lineType, &firstValue, &secondValue)) {
+    while (fscanf(file, "%c, %i, %i", &lineType, &firstValue, &secondValue)) {
         switch(lineType) {
             case 't':
                 task = newTask(firstValue, secondValue);
@@ -56,5 +56,5 @@ void parseInput(queueTask *Queue, char *inputFile) {
                 printf("Errore"); //troavre di meglio
         }
     }
-    fclose(inputFile);
+    fclose(file);
 }
