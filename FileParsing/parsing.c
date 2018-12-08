@@ -1,16 +1,14 @@
-//
-//
-//  Created by Alessandro Maggi on 30/10/2018.
-//  Copyright © 2018 Alessandro Maggi. All rights reserved.
-//
+
+/*DA SOLO FUNZIONA*/
+
 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
-#include "./../DataStructure/list.c"
+#include "list.c"
 
-void parseInput(queueTask *Queue, char *inputFile) {
+void parseInput(queueTask *Queue, char* inputFile) {
 
     char lineType;
     int firstValue, secondValue;
@@ -20,36 +18,41 @@ void parseInput(queueTask *Queue, char *inputFile) {
 
     if (file == NULL) {
         printf("Errore"); //fare qualcosa piu utile di stampare errore
+        exit(1);
     }
 
-    while (fscanf(file, "%c, %i, %i", &lineType, &firstValue, &secondValue)) {
+    while (fscanf(file, "%c, %d, %d\n", &lineType, &firstValue, &secondValue) != EOF) {
+        
+        //row parsing
         switch(lineType) {
+            //task
             case 't':
                 task = newTask(firstValue, secondValue);
-                insertTaskInQueue;
+                insertTaskInQueue(task, Queue);
                 break;
+            //istruzione
             case 'i':
-                //se è la prima istruzione
+                //se è la prima istruzione <-- serve ??????
                 if ((*task).programCounter == NULL) {
+                    instruction *head;
                     //se l'istruzione è non bloccante
                     if (firstValue == 0) {
-                        instruction *head = newInstruction(false, secondValue);
-                        insertInstructionInTask(head, task);
+                        head = newInstruction(false, secondValue);
                     }
                     else {
-                        instruction *head = newInstruction(true, secondValue);
-                        insertInstructionInTask(head, task);
+                        head = newInstruction(true, secondValue);    
                     }
+                    insertInstructionInTask(head, task);
                 }
                 else {
+                    instruction *next;
                     if (firstValue == 0) {
-                        instruction *head = newInstruction(false, secondValue);
-                        insertInstructionInTask(head, task);
+                        next = newInstruction(false, secondValue);
                     }
                     else {
-                        instruction *head = newInstruction(true, secondValue);
-                        insertInstructionInTask(head, task);
+                        next = newInstruction(true, secondValue);
                     }
+                    insertInstructionInTask(next, task);
                 }
                 break;
             default:
