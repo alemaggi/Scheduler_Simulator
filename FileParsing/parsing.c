@@ -1,10 +1,12 @@
-
-/*DA SOLO FUNZIONA*/
-
-
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <stdbool.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <pthread.h>
+#include <getopt.h>
+#include <string.h>
 
 #include "list.c"
 
@@ -17,7 +19,7 @@ void parseInput(queueTask *Queue, char* inputFile) {
     FILE *file = fopen(inputFile, "r");
 
     if (file == NULL) {
-        printf("Errore"); //fare qualcosa piu utile di stampare errore
+        printf("Errore in parseInput");
         exit(1);
     }
 
@@ -32,7 +34,7 @@ void parseInput(queueTask *Queue, char* inputFile) {
                 break;
             //istruzione
             case 'i':
-                //se è la prima istruzione <-- serve ??????
+                //se è la prima istruzione
                 if ((*task).programCounter == NULL) {
                     instruction *head;
                     //se l'istruzione è non bloccante
@@ -56,7 +58,7 @@ void parseInput(queueTask *Queue, char* inputFile) {
                 }
                 break;
             default:
-                printf("Errore"); //troavre di meglio
+                printf("Errore in parseInput2");
         }
     }
     fclose(file);
