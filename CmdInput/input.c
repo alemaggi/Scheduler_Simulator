@@ -1,12 +1,16 @@
-#include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sysexits.h>
+#include <stdbool.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <pthread.h>
+#include <getopt.h>
+#include <string.h>
 
 const char* program_name;
 
-//stampo l' helper dei comandi da cmd line
+//help dei comandi
 void print_help(char* program_name) {
     printf("%s %s %s\n%s\n%s\n%s\n%s\n",
         "Use:", program_name,"[OPTION] ...",
@@ -65,12 +69,12 @@ void cmdOption(char** argv, int argc, char** input_file, char** output_preemptio
             break;
             
             default:
-                printf("Errore"); //trovare di meglio
+                printf("Errore in cmdOption"); //trovare di meglio
             break;
         }
     }while(getopt_result != -1);
 
     if(*input_file == NULL || *output_preemption == NULL || *output_no_preemption == NULL){
-        printf("Errore"); //trovare di meglio
+        printf("Errore in cmdOption2"); //trovare di meglio
     }
 }
