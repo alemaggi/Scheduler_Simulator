@@ -1,13 +1,3 @@
-//
-//
-//  Created by Alessandro Maggi on 30/10/2018.
-//  Copyright © 2018 Alessandro Maggi. All rights reserved.
-//
-
-
-/*file contenente tutte le strutture dati necessare alla gesitone dei task e delle istruzioni */
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -15,6 +5,11 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <pthread.h>
+#include <getopt.h>
+#include <string.h>
+
+#ifndef LIST
+#define LIST
 
 typedef struct Task task; /*I task sono una lista concatenata di istruzioni*/
 typedef struct Instruction instruction;
@@ -29,12 +24,15 @@ struct Task {
     listInstruction *instr_list; //lista delle istruzioni da eseguire instr_list
     int processState; /*usiamo un numero per rappresentare i 5 stati 0:new, 1:ready, 2: running, 3:blocked, 4:exit*/
     task *next;
+    int blockTime;
+    int sommaLunghezzaIstruzioni;
 };
 
 /*Struttura per rappresentare una istruzione*/
 struct Instruction {
     bool typeFlag; //1: bloccante, 0:nonBloccante
     int length;
+    int executionTime;
     instruction *next;
 };
 
@@ -46,7 +44,7 @@ struct List_for_instruction {
 /*Struttura per rappresentare la lista di istruzioni che contiene solo un puntatore all' istruzione successiva*/
 struct Queue_for_task {
     task *firstTask;
-    int size; //mi serve poi per potrene controllare la presenza di elementi /*IN CASO DI ERRORE é QUI*/
+    int size; //mi serve poi per potrene controllare la presenza di elementi
 };
 
 /*nuova lista di istruzioni*/
@@ -54,7 +52,7 @@ listInstruction *newListInstructionNode() {
     listInstruction *newListNode = NULL;
     newListNode = (listInstruction*)malloc(sizeof(listInstruction)); 
     if (newListNode == NULL) {
-        printf("Errore"); /*Trovare errore piu descrittivo*/
+        printf("Errore in newListInstructionNode");
     }
     (*newListNode).headInstruction = NULL;
     
@@ -66,10 +64,10 @@ instruction *newInstruction(bool typeFlag, int length) {
     instruction *newInstruction = NULL;
     newInstruction = (instruction*)malloc(sizeof(instruction));
     if (newInstruction == NULL) {
-        printf("Errore");/*Trovare errore piu descrittivo*/
+        printf("Errore in newInstruction");
     }
     (*newInstruction).typeFlag = typeFlag; /*Assegniamo all' attributo typeFlag della struct il valore passato alla funzione*/
-    
+    (*newInstruction).executionTime = length;
     /*Se l' istruzione è bloccante*/
     if (typeFlag == true) {
         (*newInstruction).length = rand() % length + 1;
@@ -90,7 +88,7 @@ task *newTask(int id, int arrival_time) {
     newTaskNode = (task*)malloc(sizeof(task));
     
     if (newTaskNode == NULL) {
-        printf("Errore");/*Trovare errore piu descrittivo*/
+        printf("Errore in newTask");
     }
     
     (*newTaskNode).id = id;
@@ -98,17 +96,10 @@ task *newTask(int id, int arrival_time) {
     (*newTaskNode).processState = 0;
     (*newTaskNode).programCounter = NULL;
     (*newTaskNode).next = NULL;
+    (*newTaskNode).blockTime = 0;
+    (*newTaskNode).sommaLunghezzaIstruzioni = 0;
     
-    /*IN CASO FACCIA CASINO SCOMMENTARE LA ROBA SOTTO*/
-    /*dato che instr_list è la lista delle istruzini da eseguire
-    devo creare un nuovo nodo alla lista delle istruzioni
-    listInstruction *newListNode = newListInstructionNode();
-    (*newTaskNode).instr_list = newListNode;*/
-    
-    /*E COMMENTARE QUESTA*/
-    /*Tentativo diverso dalla roba sopra commentata*/
     (*newTaskNode).instr_list = newListInstructionNode();
-    /*(*newTaskNode).instr_list -> headInstruction = NULL;*/
      
     return newTaskNode;
 }
@@ -119,11 +110,11 @@ queueTask *newQueueForTask() {
     newTaskQueue = (queueTask*)malloc(sizeof(queueTask));
     
     if (newTaskQueue == NULL) {
-        printf("Errore");/*Trovare errore piu descrittivo*/
+        printf("Errore in newQueueForTask");
     }
     
     (*newTaskQueue).firstTask = NULL;
-    (*newTaskQueue).size = 0; /*IN CASO DI ERRORE QUI*/
+    (*newTaskQueue).size = 0;
 
     return newTaskQueue;
 }
@@ -138,6 +129,7 @@ void insertInstructionInTask(instruction *instructionToInsert, task *taskToInser
     instruction *instructionTmp = (instruction*)malloc(sizeof(instruction));
     (*instructionTmp).typeFlag = (*instructionToInsert).typeFlag;
     (*instructionTmp).length = (*instructionToInsert).length;
+    (*instructionTmp).executionTime = (*instructionToInsert).executionTime;
     (*instructionTmp).next = NULL;
     
     /*se la lista di istruzioni è vuota*/
@@ -159,14 +151,12 @@ void insertInstructionInTask(instruction *instructionToInsert, task *taskToInser
 
 /*rimovo l'istruzione in testa alla lista dei task*/
 void removeInstructionFromTask(task *taskToRemoveFrom) {
-    
-    /*se la lista è gia vuota non devo rimuovere niente*/
-    /*Esiste un caso in cui questo avviene ?????*/
-    if ((*taskToRemoveFrom).instr_list -> headInstruction == NULL) {
-        printf("Errore");
+        if ((*taskToRemoveFrom).instr_list -> headInstruction == NULL) {
+        printf("Errore in removeInstructionFromTask");
     }
     else {
-        instruction *toDelete = (*taskToRemoveFrom).instr_list -> headInstruction;
+        instruction* toDelete = (instruction*)malloc(sizeof(instruction));
+        toDelete = (*taskToRemoveFrom).instr_list -> headInstruction;
         (*taskToRemoveFrom).instr_list -> headInstruction = (*toDelete).next;
         free (toDelete);
     }
@@ -185,6 +175,8 @@ void insertTaskInQueue(task *taskToInsert, queueTask *queueToInsertIn) {
     (*taskTmp).programCounter = (*taskToInsert).programCounter;
     (*taskTmp).instr_list = (*taskToInsert).instr_list;
     (*taskTmp).next = NULL;
+    (*taskTmp).blockTime = (*taskToInsert).blockTime;
+    (*taskTmp).sommaLunghezzaIstruzioni = (*taskToInsert).sommaLunghezzaIstruzioni;
     
     /*se la coda è vuota*/
     if ((*queueToInsertIn).firstTask == NULL) {
@@ -196,19 +188,20 @@ void insertTaskInQueue(task *taskToInsert, queueTask *queueToInsertIn) {
         while ((*current).next != NULL) {
             current = (*current).next;
         }
-        (*current).next = taskTmp; /*Forse in tutti questi la temporanea poi andrebbe cancellata...*/
+        (*current).next = taskTmp;
     }
     (*queueToInsertIn).size++;
 }
 
 /*Rimozione di un task dalla coda dei task*/
 void removeTaskFromQueue(queueTask *queueToRemoveFrom) {
-    /*Se la coda è vuota*/
     if ((*queueToRemoveFrom).firstTask == NULL) {
-        printf("Errore");
+        printf("Errore in removeTaskFromQueue");
     }
     
-    task *taskTmp = (*queueToRemoveFrom).firstTask;
+    task* taskTmp = (task*)malloc(sizeof(task));
+    taskTmp = (*queueToRemoveFrom).firstTask;
+
     (*queueToRemoveFrom).firstTask = (*queueToRemoveFrom).firstTask -> next;
     free(taskTmp);
     (*queueToRemoveFrom).size--;
@@ -226,24 +219,4 @@ int isEmpty(queueTask* Queue) {
     }
 }
 
-
-/*FUNZIONI DI TESTING CANCELARE IN RELEASE*/
-
-/*stampa task*/
-void print(task *Task){
-    
-    instruction *Temp;
-    for (Temp = (*Task).instr_list -> headInstruction; Temp != NULL; Temp = (*Temp).next) {
-        printf("Istr: %d, %d\n", Temp -> typeFlag, Temp -> length);
-    }
-}
-
-/*Stampa della coda di task*/
-void printAllTask(queueTask *queue) {
-    task *temp;
-    
-    for(temp = (*queue).firstTask; temp != NULL; temp = (*temp).next){
-        printf("Task: %d, %d\n", temp->id, temp->arrival_time);
-        print(temp);
-    }
-}
+#endif
